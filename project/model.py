@@ -33,7 +33,7 @@ class VisionIDM(nn.Module):
         # 2. Two-Layer Action Head (MLP)
         # 1024 (or 1031) -> 256 -> 8 (7 joints + 1 gripper)
         self.action_head = nn.Sequential(
-            nn.Linear(mlp_input_dim, 256), nn.ReLU(), nn.Linear(256, 8)
+            nn.Linear(mlp_input_dim, 256), nn.ReLU(),nn.Dropout(p=0.3), nn.Linear(256, 8)
         )
 
     def forward(self, obs_t, obs_tk, q_t=None):
