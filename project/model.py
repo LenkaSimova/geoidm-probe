@@ -18,12 +18,12 @@ class VisionIDM(nn.Module):
         # Using ResNet18 keeps it ~12M parameters and easily trainable on a consumer GPU.
         resnet = models.resnet18(weights=models.ResNet18_Weights.IMAGENET1K_V1)
 
-        # Strip the final classification layer (fc) to extract the raw 512-dim features.
-        # The output of the layer before 'fc' is exactly what we need after pooling.
-        self.encoder = nn.Sequential(*list(resnet.children())[:-1])
+        # Strip the final classification layer (fc) AND the AdaptiveAvgPool2d layer.
+        self.encoder = nn.Sequential(*list(resnet.children())[:-2])
 
-        # ResNet18 outputs 512 features per image. Two images = 1024 features.
-        cnn_out_dim = 512
+        self.spatial_bottleneck = nn.Conv2d(512, 64, kernel_size=1)
+
+        cnn_out_dim = 64 * 6 * 10
         mlp_input_dim = cnn_out_dim * 2
 
         # Optional: Add 7 dimensions if we are concatenating the current joint state (q_t)
@@ -45,6 +45,10 @@ class VisionIDM(nn.Module):
         # Shape goes from (B, 3, H, W) -> (B, 512, 1, 1)
         feat_t = self.encoder(obs_t)
         feat_tk = self.encoder(obs_tk)
+
+        # Apply a 1x1 convolution to reduce the channel dimension from 512 to 64
+        feat_t = self.spatial_bottleneck(feat_t)
+        feat_tk = self.spatial_bottleneck(feat_tk)
 
         # Flatten the spatial dimensions: (B, 512, 1, 1) -> (B, 512)
         feat_t = torch.flatten(feat_t, 1)
