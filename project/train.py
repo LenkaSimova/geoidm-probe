@@ -1,4 +1,5 @@
 import glob
+import logging
 import os
 
 import numpy as np
@@ -8,16 +9,35 @@ import torch.optim as optim
 import torchvision.models as models
 import torchvision.transforms as T
 
+from datetime import datetime
+
 # Import the model you built in the previous step
 from model import VisionIDM
 from torch.utils.data import DataLoader, Dataset
 from tqdm import tqdm
 
+log_dir = "logs"
+os.makedirs(log_dir, exist_ok=True)
+timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+log_file_path = os.path.join(log_dir, f"training_run_{timestamp}.log")
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    handlers=[
+        logging.FileHandler(log_file_path),
+        logging.StreamHandler()
+    ]
+)
+logger = logging.getLogger(__name__)
+
 # --- Configuration ---
 DATA_DIR = "./prepared_data"
 BATCH_SIZE = 128
-EPOCHS = 15
+HEAD_TRAIN_EPOCHS = 5  # Number of epochs to train only the action head
+EPOCHS = 10
 LEARNING_RATE = 1e-4  # Slightly lower for fine-tuning ResNet
+LEARNING_RATE_FINE_TUNING = 5e-5  # Lower learning rate for fine-tuning
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 USE_PROPRIO = False  # Set to True for Stretch S3 (Vision + Proprio ablation)
 
@@ -112,7 +132,7 @@ def main():
     optimizer = optim.Adam(
         [
             {"params": model.encoder.parameters(), "lr": 0.0},  # Frozen, LR = 0
-            {"params": model.action_head.parameters(), "lr": LEARNING_RATE},
+            {"params": model.action_head.parameters(), "lr": LEARNING_RATE, "weight_decay": 1e-4},
         ]
     )
 
@@ -120,12 +140,13 @@ def main():
     print("\nStarting training...")
     for epoch in range(1, EPOCHS + 1):
         # --- PHASE 2 SETUP: PARTIAL FINE-TUNING ---
-        if epoch == 6:
+        if epoch == HEAD_TRAIN_EPOCHS + 1:
             print("\n[Phase 2] Unfreezing top ResNet layers. Dropping learning rate...")
             model.unfreeze_top_encoder_layers()
 
             # Update the learning rate of the encoder group (index 0)
-            optimizer.param_groups[0]["lr"] = 1e-5
+            optimizer.param_groups[0]["lr"] = LEARNING_RATE_FINE_TUNING
+            optimizer.param_groups[0]["weight_decay"] = 1e-6
 
         model.train()
         train_loss = 0.0
@@ -156,7 +177,33 @@ def main():
             train_loss += loss.item() * obs_t.size(0)
 
         train_loss /= len(train_dataset)
-        print(f"Epoch {epoch:02d} | Train Loss (MAE sum): {train_loss:.5f}")
+
+        model.eval()
+        total_q_mae = 0.0
+        total_g_mae = 0.0
+
+        with torch.no_grad():
+            for obs_t, obs_tk, q_t, dq_true, dg_true in tqdm(
+                test_loader, desc="Evaluating"
+            ):
+                obs_t = obs_t.to(DEVICE)
+                obs_tk = obs_tk.to(DEVICE)
+                q_t = q_t.to(DEVICE)
+                dq_true = dq_true.to(DEVICE)
+                dg_true = dg_true.to(DEVICE)
+
+                dq_pred, dg_pred = model(obs_t, obs_tk, q_t)
+
+                batch_q_mae = torch.abs(dq_pred - dq_true).mean().item()
+                batch_g_mae = torch.abs(dg_pred - dg_true).mean().item()
+
+                total_q_mae += batch_q_mae * obs_t.size(0)
+                total_g_mae += batch_g_mae * obs_t.size(0)
+
+        final_q_mae = total_q_mae / len(test_dataset)
+        final_g_mae = total_g_mae / len(test_dataset)
+
+        logger.info(f"Epoch {epoch:02d} | Train Loss (MAE sum): {train_loss:.5f} | Joint MAE: {final_q_mae:.5f} radians | Gripper MAE: {final_g_mae:.5f}")
 
     # 4. Evaluation (The Prerequisite Gate)
     print("\n--- Evaluating IDM on Held-out Episodes ---")
@@ -186,12 +233,8 @@ def main():
     final_g_mae = total_g_mae / len(test_dataset)
 
     print("\n[Vision IDM Results]")
-    print(f"Joint MAE:   {final_q_mae:.5f} radians")
-    print(f"Gripper MAE: {final_g_mae:.5f}")
-    print("\n>>> Compare these numbers to your 3 baselines! <<<")
-    print(
-        "If these are lower than the proprio-only (q_t) baseline, your model successfully learns from vision."
-    )
+    logger.info(f"Joint MAE:   {final_q_mae:.5f} radians")
+    logger.info(f"Gripper MAE: {final_g_mae:.5f}")
 
 
 if __name__ == "__main__":
