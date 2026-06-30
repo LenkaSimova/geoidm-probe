@@ -151,8 +151,8 @@ of the training signal. Ideas for improvement:
 1. **Filter the stationary pairs** (train and evaluate on `Σ|Δq| > threshold`) and/or
    **standardize the targets per joint**, so the moving pairs drive training. The motion
    is already in the data; this just stops the near-zero pairs from dominating the loss.
-2. **Report skill = 1 − MAE/MAE_zero and the correlation table** rather than raw MAE.
+2. **Report `skill = 1 − MAE/MAE_zero` and the correlation table** rather than raw MAE.
    Correlation rising above the proprio MLP's 0.074 is the clearer test that vision is
    contributing.
-3. **Increase `GAP_K`** (re-extract at k=15–30), if filtering is not enough, to enlarge
+3. **Increase `GAP_K`**, if filtering is not enough, to enlarge
    the motion within each pair.
