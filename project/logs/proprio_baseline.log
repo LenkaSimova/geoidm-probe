@@ -1,0 +1,17 @@
+Using device: cuda
+Loading datasets...
+Starting training...
+Epoch 01 | Train Loss (MAE): 0.08660                                                                                                                           
+Epoch 02 | Train Loss (MAE): 0.07798                                                                                                                           
+Epoch 03 | Train Loss (MAE): 0.07752                                                                                                                           
+Epoch 04 | Train Loss (MAE): 0.07807                                                                                                                           
+Epoch 05 | Train Loss (MAE): 0.07714                                                                                                                           
+Epoch 06 | Train Loss (MAE): 0.07671                                                                                                                           
+Epoch 07 | Train Loss (MAE): 0.07681                                                                                                                           
+Epoch 08 | Train Loss (MAE): 0.07641                                                                                                                           
+Epoch 09 | Train Loss (MAE): 0.07622                                                                                                                           
+Epoch 10 | Train Loss (MAE): 0.07688                                                                                                                           
+
+--- Evaluating Prerequisite Gate (Held-out Episodes) ---
+Proprio-Only Joint MAE:   0.03867 radians
+Proprio-Only Gripper MAE: 0.04942

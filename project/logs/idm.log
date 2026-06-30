@@ -1,0 +1,12 @@
+2026-06-28 15:07:30,224 [INFO] Epoch 01 | Train Loss (MAE sum): 0.10459 | Joint MAE: 0.04378 radians | Gripper MAE: 0.04877
+2026-06-28 15:08:11,014 [INFO] Epoch 02 | Train Loss (MAE sum): 0.07936 | Joint MAE: 0.04311 radians | Gripper MAE: 0.04861
+2026-06-28 15:08:51,493 [INFO] Epoch 03 | Train Loss (MAE sum): 0.07696 | Joint MAE: 0.04019 radians | Gripper MAE: 0.04852
+2026-06-28 15:09:31,659 [INFO] Epoch 04 | Train Loss (MAE sum): 0.07568 | Joint MAE: 0.03915 radians | Gripper MAE: 0.04851
+2026-06-28 15:10:12,073 [INFO] Epoch 05 | Train Loss (MAE sum): 0.07486 | Joint MAE: 0.03883 radians | Gripper MAE: 0.04847
+2026-06-28 15:10:58,090 [INFO] Epoch 06 | Train Loss (MAE sum): 0.07496 | Joint MAE: 0.03819 radians | Gripper MAE: 0.04846
+2026-06-28 15:11:45,773 [INFO] Epoch 07 | Train Loss (MAE sum): 0.07474 | Joint MAE: 0.03832 radians | Gripper MAE: 0.04846
+2026-06-28 15:12:33,544 [INFO] Epoch 08 | Train Loss (MAE sum): 0.07471 | Joint MAE: 0.03841 radians | Gripper MAE: 0.04845
+2026-06-28 15:13:21,811 [INFO] Epoch 09 | Train Loss (MAE sum): 0.07445 | Joint MAE: 0.03833 radians | Gripper MAE: 0.04845
+2026-06-28 15:14:09,902 [INFO] Epoch 10 | Train Loss (MAE sum): 0.07439 | Joint MAE: 0.03842 radians | Gripper MAE: 0.04845
+2026-06-28 15:14:20,491 [INFO] Joint MAE:   0.03842 radians
+2026-06-28 15:14:20,491 [INFO] Gripper MAE: 0.04845
