@@ -92,6 +92,33 @@ class DroidVisionDataset(Dataset):
         return img_t, img_tk, self.q_t[idx], self.delta_qs[idx], self.delta_gs[idx]
 
 
+def evaluate(model, test_loader, num_samples):
+    """Run the model over test_loader and return (joint_mae, gripper_mae)."""
+    model.eval()
+    total_q_mae = 0.0
+    total_g_mae = 0.0
+
+    with torch.no_grad():
+        for obs_t, obs_tk, q_t, dq_true, dg_true in tqdm(
+            test_loader, desc="Evaluating"
+        ):
+            obs_t = obs_t.to(DEVICE)
+            obs_tk = obs_tk.to(DEVICE)
+            q_t = q_t.to(DEVICE)
+            dq_true = dq_true.to(DEVICE)
+            dg_true = dg_true.to(DEVICE)
+
+            dq_pred, dg_pred = model(obs_t, obs_tk, q_t)
+
+            batch_q_mae = torch.abs(dq_pred - dq_true).mean().item()
+            batch_g_mae = torch.abs(dg_pred - dg_true).mean().item()
+
+            total_q_mae += batch_q_mae * obs_t.size(0)
+            total_g_mae += batch_g_mae * obs_t.size(0)
+
+    return total_q_mae / num_samples, total_g_mae / num_samples
+
+
 # --- 2. Main Training Loop ---
 def main():
     print(f"Using device: {DEVICE}")
@@ -178,63 +205,23 @@ def main():
 
         train_loss /= len(train_dataset)
 
-        model.eval()
-        total_q_mae = 0.0
-        total_g_mae = 0.0
-
-        with torch.no_grad():
-            for obs_t, obs_tk, q_t, dq_true, dg_true in tqdm(
-                test_loader, desc="Evaluating"
-            ):
-                obs_t = obs_t.to(DEVICE)
-                obs_tk = obs_tk.to(DEVICE)
-                q_t = q_t.to(DEVICE)
-                dq_true = dq_true.to(DEVICE)
-                dg_true = dg_true.to(DEVICE)
-
-                dq_pred, dg_pred = model(obs_t, obs_tk, q_t)
-
-                batch_q_mae = torch.abs(dq_pred - dq_true).mean().item()
-                batch_g_mae = torch.abs(dg_pred - dg_true).mean().item()
-
-                total_q_mae += batch_q_mae * obs_t.size(0)
-                total_g_mae += batch_g_mae * obs_t.size(0)
-
-        final_q_mae = total_q_mae / len(test_dataset)
-        final_g_mae = total_g_mae / len(test_dataset)
+        final_q_mae, final_g_mae = evaluate(model, test_loader, len(test_dataset))
 
         logger.info(f"Epoch {epoch:02d} | Train Loss (MAE sum): {train_loss:.5f} | Joint MAE: {final_q_mae:.5f} radians | Gripper MAE: {final_g_mae:.5f}")
 
     # 4. Evaluation (The Prerequisite Gate)
     print("\n--- Evaluating IDM on Held-out Episodes ---")
-    model.eval()
-    total_q_mae = 0.0
-    total_g_mae = 0.0
-
-    with torch.no_grad():
-        for obs_t, obs_tk, q_t, dq_true, dg_true in tqdm(
-            test_loader, desc="Evaluating"
-        ):
-            obs_t = obs_t.to(DEVICE)
-            obs_tk = obs_tk.to(DEVICE)
-            q_t = q_t.to(DEVICE)
-            dq_true = dq_true.to(DEVICE)
-            dg_true = dg_true.to(DEVICE)
-
-            dq_pred, dg_pred = model(obs_t, obs_tk, q_t)
-
-            batch_q_mae = torch.abs(dq_pred - dq_true).mean().item()
-            batch_g_mae = torch.abs(dg_pred - dg_true).mean().item()
-
-            total_q_mae += batch_q_mae * obs_t.size(0)
-            total_g_mae += batch_g_mae * obs_t.size(0)
-
-    final_q_mae = total_q_mae / len(test_dataset)
-    final_g_mae = total_g_mae / len(test_dataset)
+    final_q_mae, final_g_mae = evaluate(model, test_loader, len(test_dataset))
 
     print("\n[Vision IDM Results]")
     logger.info(f"Joint MAE:   {final_q_mae:.5f} radians")
     logger.info(f"Gripper MAE: {final_g_mae:.5f}")
+
+    # Save the trained weights so diagnostics.py can reload the model and
+    # compute prediction-quality diagnostics (correlation, sign-agreement, R²).
+    ckpt_path = "idm_vision.pt"
+    torch.save({"state_dict": model.state_dict(), "use_proprio": USE_PROPRIO}, ckpt_path)
+    logger.info(f"Saved checkpoint to {ckpt_path}")
 
 
 if __name__ == "__main__":
