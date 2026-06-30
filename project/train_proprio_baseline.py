@@ -54,7 +54,7 @@ class ProprioDataset(Dataset):
         return self.q_t[idx], self.delta_qs[idx], self.delta_gs[idx]
 
 
-# --- 2. The Model (from idm/baselines.py) ---
+# --- 2. The Model ---
 class BaselineProprioMLP(nn.Module):
     """Predicts Δq and Δg using ONLY the current joint position (q_t)."""
 
